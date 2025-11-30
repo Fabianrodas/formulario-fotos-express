@@ -1,0 +1,174 @@
+<%- include('partials/header') %>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .form-container {
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input, textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    .btn-submit {
+        background-color: #4CAF50;
+        color: white;
+    }
+    .btn-submit:hover {
+        background-color: #45a049;
+    }
+    .btn-cancel {
+        background-color: #f44336;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-cancel:hover {
+        background-color: #da190b;
+    }
+    .error {
+        color: red;
+        margin-top: 10px;
+    }
+    .loading {
+        text-align: center;
+        padding: 20px;
+    }
+    .content-wrapper {
+        padding: 20px;
+        margin-bottom: 200px; /* Espacio para el footer */
+    }
+</style>
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="content-wrapper">
+        <div class="form-container">
+            <h1>Editar Foto</h1>
+            <div id="loadingMessage" class="loading">Cargando datos...</div>
+            <form id="editForm" style="display: none;">
+                <input type="hidden" id="id" name="id" value="">
+                
+                <div class="form-group">
+                    <label for="title">Título:</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Descripción:</label>
+                    <textarea id="description" name="description" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="rate">Calificación:</label>
+                    <input type="number" id="rate" name="rate" step="0.1" min="0" max="10" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ruta">Ruta:</label>
+                    <input type="text" id="ruta" name="ruta">
+                </div>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-submit">Actualizar</button>
+                    <a href="/photos/list" class="btn btn-cancel">Cancelar</a>
+                </div>
+                
+                <div id="errorMessage" class="error"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const fotoId = '<%= id %>';
+        
+        async function loadFoto() {
+            try {
+                const response = await fetch(`/findAllById/${fotoId}/json`);
+                const fotos = await response.json();
+                
+                if (fotos.length > 0) {
+                    const foto = fotos[0];
+                    document.getElementById('id').value = foto.id;
+                    document.getElementById('title').value = foto.titulo;
+                    document.getElementById('description').value = foto.descripcion;
+                    document.getElementById('rate').value = foto.calificacion;
+                    document.getElementById('ruta').value = foto.ruta || '';
+                    
+                    document.getElementById('loadingMessage').style.display = 'none';
+                    document.getElementById('editForm').style.display = 'block';
+                } else {
+                    document.getElementById('loadingMessage').textContent = 'Foto no encontrada';
+                    document.getElementById('errorMessage').textContent = 'Foto no encontrada';
+                }
+            } catch (error) {
+                console.error('Error al cargar foto:', error);
+                document.getElementById('loadingMessage').textContent = 'Error al cargar los datos';
+                document.getElementById('errorMessage').textContent = 'Error al cargar los datos';
+            }
+        }
+        
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: document.getElementById('id').value,
+                titulo: document.getElementById('title').value,
+                descripcion: document.getElementById('description').value,
+                calificacion: document.getElementById('rate').value,
+                ruta: document.getElementById('ruta').value
+            };
+            
+            try {
+                const response = await fetch('/update', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/photos/list?message=' + encodeURIComponent('Foto actualizada exitosamente');
+                } else {
+                    document.getElementById('errorMessage').textContent = 'Error al actualizar la foto';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('errorMessage').textContent = 'Error al actualizar la foto';
+            }
+        });
+        
+        loadFoto();
+    </script>
+
+<%- include('partials/footer') %>

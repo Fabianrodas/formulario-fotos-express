@@ -1,0 +1,256 @@
+<%- include('partials/header') %>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+    }
+    .search-container {
+        max-width: 800px;
+        margin: 30px auto;
+        padding: 20px;
+    }
+    .search-form {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #4CAF50;
+        color: white;
+    }
+    tr:hover {
+        background-color: #f5f5f5;
+    }
+    .btn {
+        padding: 8px 16px;
+        margin: 0 5px;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+    }
+    .btn-edit {
+        background-color: #2196F3;
+        color: white;
+    }
+    .btn-delete {
+        background-color: #f44336;
+        color: white;
+    }
+    .btn-search {
+        background-color: #4CAF50;
+        color: white;
+    }
+    #resultsSection {
+        display: none;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .tab-buttons {
+        margin-bottom: 20px;
+    }
+    .tab-buttons button {
+        margin-right: 10px;
+    }
+    .search-type {
+        display: none;
+    }
+    .search-type.active {
+        display: block;
+    }
+    .content-wrapper {
+        padding: 20px;
+    }
+</style>
+</head>
+<body>
+    <%- include('partials/navbar') %>
+    
+    <div class="content-wrapper">
+        <div class="search-container">
+            <h1>Buscar Fotos</h1>
+            
+            <div class="tab-buttons">
+                <button class="btn btn-primary" onclick="showSearchType('id')">Buscar por ID</button>
+                <button class="btn btn-primary" onclick="showSearchType('rate')">Buscar por Calificación</button>
+            </div>
+            
+            <div class="search-form">
+                <!-- Búsqueda por ID -->
+                <div id="searchById" class="search-type active">
+                    <h3>Buscar por ID</h3>
+                    <form onsubmit="searchById(event)">
+                        <div class="form-group">
+                            <label for="photoId">ID de la Foto:</label>
+                            <input type="number" class="form-control" id="photoId" min="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-search">Buscar</button>
+                    </form>
+                </div>
+                
+                <!-- Búsqueda por Calificación -->
+                <div id="searchByRate" class="search-type">
+                    <h3>Buscar por Calificación</h3>
+                    <form onsubmit="searchByRate(event)">
+                        <div class="form-group">
+                            <label for="lowerRate">Calificación Mínima:</label>
+                            <input type="number" class="form-control" id="lowerRate" step="0.1" min="0" max="10" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="higherRate">Calificación Máxima:</label>
+                            <input type="number" class="form-control" id="higherRate" step="0.1" min="0" max="10" required>
+                        </div>
+                        <button type="submit" class="btn btn-search">Buscar</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="resultsSection">
+                <h2>Resultados de la Búsqueda</h2>
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Título</th>
+                            <th>Descripción</th>
+                            <th>Calificación</th>
+                            <th>Ruta</th>
+                            <th>Fecha Creación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <div id="noResults" style="display: none; text-align: center; padding: 20px;">
+                    <p>No se encontraron resultados.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSearchType(type) {
+            document.querySelectorAll('.search-type').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            if (type === 'id') {
+                document.getElementById('searchById').classList.add('active');
+            } else {
+                document.getElementById('searchByRate').classList.add('active');
+            }
+            
+            // Limpiar resultados
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+        
+        async function searchById(event) {
+            event.preventDefault();
+            const id = document.getElementById('photoId').value;
+            
+            try {
+                const response = await fetch(`/findAllById/${id}/json`);
+                const fotos = await response.json();
+                displayResults(fotos);
+            } catch (error) {
+                console.error('Error al buscar:', error);
+                alert('Error al realizar la búsqueda');
+            }
+        }
+        
+        async function searchByRate(event) {
+            event.preventDefault();
+            const lower = document.getElementById('lowerRate').value;
+            const higher = document.getElementById('higherRate').value;
+            
+            if (parseFloat(lower) > parseFloat(higher)) {
+                alert('La calificación mínima no puede ser mayor que la máxima');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/findAllByRate/json?lower=${lower}&higher=${higher}`);
+                const fotos = await response.json();
+                displayResults(fotos);
+            } catch (error) {
+                console.error('Error al buscar:', error);
+                alert('Error al realizar la búsqueda');
+            }
+        }
+        
+        function displayResults(fotos) {
+            const resultsSection = document.getElementById('resultsSection');
+            const tbody = document.querySelector('#resultsTable tbody');
+            const noResults = document.getElementById('noResults');
+            
+            tbody.innerHTML = '';
+            
+            if (fotos.length === 0) {
+                resultsSection.style.display = 'block';
+                document.getElementById('resultsTable').style.display = 'none';
+                noResults.style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('resultsTable').style.display = 'table';
+            noResults.style.display = 'none';
+            
+            fotos.forEach(foto => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${foto.id}</td>
+                    <td>${foto.titulo}</td>
+                    <td>${foto.descripcion}</td>
+                    <td>${foto.calificacion}</td>
+                    <td>${foto.ruta || 'N/A'}</td>
+                    <td>${new Date(foto.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-edit" onclick="editFoto(${foto.id})">Editar</button>
+                        <button class="btn btn-delete" onclick="deleteFoto(${foto.id}, '${foto.titulo}')">Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            resultsSection.style.display = 'block';
+        }
+        
+        function editFoto(id) {
+            window.location.href = `/photos/edit/${id}`;
+        }
+        
+        async function deleteFoto(id, titulo) {
+            if (confirm(`¿Estás seguro de eliminar la foto "${titulo}"?`)) {
+                try {
+                    const response = await fetch(`/delete/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        alert(`Foto "${titulo}" eliminada exitosamente`);
+                        // Recargar los resultados actuales
+                        location.reload();
+                    } else {
+                        alert('Error al eliminar la foto');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error al eliminar la foto');
+                }
+            }
+        }
+    </script>
+
+<%- include('partials/footer') %>
